@@ -101,7 +101,7 @@ class TocMachine(object):
 		msg = update.message.text
 		logging.info('receive query: {}'.format(msg))
 
-		update.message.reply_text('a query? let me see...')
+		update.message.reply_text('A query? let me see...')
 
 		if self.mode == 'all':
 			result = collect.find_one({'name':msg})
@@ -110,40 +110,43 @@ class TocMachine(object):
 
 		self.lastResult = result
 
-		with io.StringIO() as replyBuffer:
-			if result is None:
-				if self.mode == 'all':
-					nameList = [item['name'] for item in collect.find({})]
-				else:
-					nameList = [item['name'] for item in collect.find({'itemType':self.mode})]
+		if result is None:
+			if self.mode == 'all':
+				nameList = [item['name'] for item in collect.find({})]
+			else:
+				nameList = [item['name'] for item in collect.find({'itemType':self.mode})]
 
-				possiblilties = [p for (p, score) in process.extract(msg, nameList) if score >= 70]
+			possiblilties = [p for (p, score) in process.extract(msg, nameList) if score >= 70]
+			with io.StringIO() as replyBuffer:
 				if len(possiblilties) == 0:
 					replyBuffer.write('No matched result')
 				else:
-					replyBuffer.write('No matched result, maybe you mean these?\n\n')
+					replyBuffer.write('No matched result, maybe you mean one of these?\n\n')
 					for p in possiblilties:
 						replyBuffer.write('> ' + p + '\n')
 				update.message.reply_text(replyBuffer.getvalue())
-				self.go_back(update)
-			else:
+			self.go_back(update)
+		else:
+			with io.StringIO() as replyBuffer:
 				replyBuffer.write('*' + result['itemType'] + '*\n')
 				if result['prototype'] == '':
 					replyBuffer.write('```' + result['name'] + '```\n')
 				else:
 					replyBuffer.write('```' + result['prototype'] + '```\n')
+				update.message.reply_text(replyBuffer.getvalue(), parse_mode='Markdown')
 
+			with io.StringIO() as replyBuffer:
 				replyBuffer.write(result['description'] + '\n\n')
 				replyBuffer.write(result['returnVal'] + '\n')
-				update.message.reply_text(replyBuffer.getvalue(), parse_mode='Markdown')
-				self.found()
+				update.message.reply_text(replyBuffer.getvalue())
+			self.found()
 
 	def on_enter_head(self, update):
-		update.message.reply_text('`%s` is defined in  %s'%(self.lastResult['name'], self.lastResult['header']) , parse_mode='Markdown')
+		update.message.reply_text('`%s` is defined in `%s`'%(self.lastResult['name'], self.lastResult['header']) , parse_mode='Markdown')
 		self.go_back(update)
 
 	def on_enter_link(self, update):
-		update.message.reply_text('`%s` is on page  \n%s'%(self.lastResult['name'], self.lastResult['link']) , parse_mode='Markdown')
+		update.message.reply_text('`%s` is on page\n%s'%(self.lastResult['name'], self.lastResult['link']) , parse_mode='Markdown')
 		self.go_back(update)
 
 	def on_enter_arg(self, update):
@@ -162,7 +165,9 @@ class TocMachine(object):
 			return
 
 		par = self.lastResult['params'][idx]
-		update.message.reply_text('*%s*\n%s\n'%(par['name'], par['description']), parse_mode='Markdown')
+		update.message.reply_text('*%s*\n'%(par['name']), parse_mode='Markdown')
+		update.message.reply_text('%s\n'%(par['description']))
+
 		self.go_back(update)
 
 
@@ -205,7 +210,7 @@ trans = [
 	},
 	{
 		'trigger':'cmd',
-		'source':'*',
+		'source':['home', 'result'],
 		'dest':'help',
 		'conditions':'cmd_help'
 	},

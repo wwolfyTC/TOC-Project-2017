@@ -1,3 +1,7 @@
+"""
+just access mongoDB for convinent, not used in app.py
+"""
+
 from pymongo import MongoClient
 from pprint import pprint
 
@@ -18,5 +22,20 @@ DBuri = ('mongodb://wwolfyTC:{0}@'
 cli = MongoClient(DBuri)
 collect = cli.CLibrary.library
 
-r = collect.find_one_and_delete({'name':'<climits> (limits.h)'})
-pprint(r)
+obj = {
+	'description': 'Null pointer',
+	'header': 'multiple header',
+	'itemType': 'macro',
+	'link': 'http://www.cplusplus.com/reference/cstdio/NULL/',
+	'name': 'NULL',
+	'params': [],
+	'prototype': '',
+	'returnVal': ''
+}
+"""
+collect.delete_many({'name':'NULL'})
+collect.insert_one(obj)
+"""
+rr = collect.find({'name':'NULL'})
+for r in rr:
+	pprint(r)
