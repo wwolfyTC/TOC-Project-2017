@@ -1,75 +1,75 @@
-import sys
-from io import BytesIO
+import sys, logging, io
 
 import telegram
-from flask import Flask, request, send_file
+from flask import Flask, request
+from pymongo import MongoClient
 
-from fsm import TocMachine
+from fsm import TocMachine, state, trans
 
 
-API_TOKEN = 'Your Telegram API Token'
-WEBHOOK_URL = 'Your Webhook URL'
+API_TOKEN = '388400415:AAFx5ItNe1gIQNaO8MeC5NMlo7FK09QeCLc'
+WEBHOOK_URL = 'https://e68af3b4.ngrok.io/hook'
+
+logging.basicConfig(
+	format='%(asctime)s [%(levelname)s]: %(message)s', 
+	datefmt='%Y/%m/%d %X', 
+	level=logging.INFO
+)
+
+# database connect
+try:
+	with open('../pw', 'r', encoding='utf-8') as fin:
+		pw = fin.readline().strip()
+except Exception:
+	print('can not find password file')
+	exit()
+
+DBuri = ('mongodb://wwolfyTC:{0}@'
+	'clibrary-shard-00-00-syrdm.mongodb.net:27017,'
+	'clibrary-shard-00-01-syrdm.mongodb.net:27017,'
+	'clibrary-shard-00-02-syrdm.mongodb.net:27017/'
+	'admin?ssl=true&replicaSet=CLIbrary-shard-0'
+	'&authSource=admin').format(pw)
+
+cli = MongoClient(DBuri)
+collect = cli.CLibrary.library
 
 app = Flask(__name__)
 bot = telegram.Bot(token=API_TOKEN)
+
 machine = TocMachine(
-    states=[
-        'user',
-        'state1',
-        'state2'
-    ],
-    transitions=[
-        {
-            'trigger': 'advance',
-            'source': 'user',
-            'dest': 'state1',
-            'conditions': 'is_going_to_state1'
-        },
-        {
-            'trigger': 'advance',
-            'source': 'user',
-            'dest': 'state2',
-            'conditions': 'is_going_to_state2'
-        },
-        {
-            'trigger': 'go_back',
-            'source': [
-                'state1',
-                'state2'
-            ],
-            'dest': 'user'
-        }
-    ],
-    initial='user',
-    auto_transitions=False,
-    show_conditions=True,
+	states=state,
+	transitions=trans,
+	initial='home',
+	auto_transitions=False
 )
-
-
-def _set_webhook():
-    status = bot.set_webhook(WEBHOOK_URL)
-    if not status:
-        print('Webhook setup failed')
-        sys.exit(1)
-    else:
-        print('Your webhook URL has been set to "{}"'.format(WEBHOOK_URL))
 
 
 @app.route('/hook', methods=['POST'])
 def webhook_handler():
-    update = telegram.Update.de_json(request.get_json(force=True), bot)
-    machine.advance(update)
-    return 'ok'
+	update = telegram.Update.de_json(request.get_json(force=True), bot)
+	if update.message is None:
+		logging.info('no message')
+		return 'ok'
+
+	if update.message.text[0] == '/':
+		machine.cmd(update)
+	else:
+		machine.query(update, collect)
+
+	return 'ok'
 
 
-@app.route('/show-fsm', methods=['GET'])
-def show_fsm():
-    byte_io = BytesIO()
-    machine.graph.draw(byte_io, prog='dot', format='png')
-    byte_io.seek(0)
-    return send_file(byte_io, attachment_filename='fsm.png', mimetype='image/png')
 
 
 if __name__ == "__main__":
-    _set_webhook()
-    app.run()
+	logging.info('initializing')
+
+	status = bot.set_webhook(WEBHOOK_URL)
+	if not status:
+		logging.error('set webhook failed')
+		sys.exit(1)
+	else:
+		logging.info('Your webhook URL has been set to "{}"'.format(WEBHOOK_URL))
+
+	app.run(port=8080)
