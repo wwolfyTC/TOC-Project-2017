@@ -139,11 +139,11 @@ class TocMachine(object):
 				self.found()
 
 	def on_enter_head(self, update):
-		update.message.reply_text('_%s_ is defined in  _%s_'%(self.lastResult['name'], self.lastResult['header']) , parse_mode='Markdown')
+		update.message.reply_text('`%s` is defined in  %s'%(self.lastResult['name'], self.lastResult['header']) , parse_mode='Markdown')
 		self.go_back(update)
 
 	def on_enter_link(self, update):
-		update.message.reply_text('_%s_ is on page  \n%s'%(self.lastResult['name'], self.lastResult['link']) , parse_mode='Markdown')
+		update.message.reply_text('`%s` is on page  \n%s'%(self.lastResult['name'], self.lastResult['link']) , parse_mode='Markdown')
 		self.go_back(update)
 
 	def on_enter_arg(self, update):
