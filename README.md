@@ -1,7 +1,7 @@
 # TOC Project: C Librarian
-![logo](./img/CLlogo.png)
+### A C library query bot
 
-A C library query bot
+![logo](./img/CLlogo.png)
 
 ## Finite State Machine
 ![fsm](./img/fsm.png)
