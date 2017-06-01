@@ -32,10 +32,17 @@ obj = {
 	'prototype': '',
 	'returnVal': ''
 }
+
+r = collect.find_one({'name':'difftime'})
+print(r['returnVal'])
+for p in r['params']:
+	print(p['name'], '\n', p['description'])
 """
-collect.delete_many({'name':'NULL'})
-collect.insert_one(obj)
+
+collect.delete_many({'header':'string.h'})
+"""
 """
 rr = collect.find({'name':'NULL'})
 for r in rr:
 	pprint(r)
+"""

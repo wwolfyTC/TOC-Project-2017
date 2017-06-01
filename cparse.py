@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from pprint import pprint
 
 
-lib = 'limits'
+lib = 'time'
 
 root = 'http://www.cplusplus.com'
 target = 'http://www.cplusplus.com/reference/c' + lib + '/'
@@ -29,6 +29,9 @@ DBuri = ('mongodb://wwolfyTC:{0}@'
 cli = MongoClient(DBuri)
 collect = cli.CLibrary.library
 
+# remove old items
+collect.delete_many({'header':header})
+print('old items removed')
 
 # parser
 mainPage = urlopen(target).read()
@@ -78,7 +81,7 @@ for item in items:
 		paraSection = soup.find('section', id='parameters').dl.find_all('dt')
 		for p in paraSection:
 			pname = p.string
-			strs = p.find_next('dd').stripped_strings
+			strs = p.find_next('dd').strings
 			pdescription = ''.join(strs)
 			params.append({'name':pname, 'description':pdescription})
 	except AttributeError:
@@ -87,8 +90,9 @@ for item in items:
 	try:
 		returnSection = soup.find('section', id='return')
 		returnSection.h3.decompose()
-		strs = returnSection.stripped_strings
-		returnVal = ' '.join(strs)
+
+		strs = returnSection.strings
+		returnVal = ''.join(strs)
 	except AttributeError:
 		returnVal = ''
 
@@ -105,5 +109,8 @@ for item in items:
 
 	collect.insert_one(obj)
 	print('insert:', obj['name'])
+
+	#pprint(obj)
+	#print('\n')
 
 print('done!')
