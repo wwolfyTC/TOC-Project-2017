@@ -48,7 +48,6 @@ class TocMachine(object):
 
 	def on_enter_home(self, update):
 		self.lastResult = None
-		update.message.reply_text('Back to home')
 
 	def on_enter_help(self, update):
 		with io.StringIO() as replyBuffer:
@@ -128,7 +127,7 @@ class TocMachine(object):
 				update.message.reply_text(replyBuffer.getvalue())
 				self.go_back(update)
 			else:
-				replyBuffer.write('*' + result['itemType'] + '*')
+				replyBuffer.write('*' + result['itemType'] + '*\n')
 				if result['prototype'] == '':
 					replyBuffer.write('```' + result['name'] + '```\n')
 				else:
@@ -144,7 +143,7 @@ class TocMachine(object):
 		self.go_back(update)
 
 	def on_enter_link(self, update):
-		update.message.reply_text('_%s_ is on page  _%s_'%(self.lastResult['name'], self.lastResult['link']) , parse_mode='Markdown')
+		update.message.reply_text('_%s_ is on page  \n%s'%(self.lastResult['name'], self.lastResult['link']) , parse_mode='Markdown')
 		self.go_back(update)
 
 	def on_enter_arg(self, update):
