@@ -8,7 +8,7 @@ from fsm import TocMachine, state, trans
 
 
 API_TOKEN = '388400415:AAFx5ItNe1gIQNaO8MeC5NMlo7FK09QeCLc'
-WEBHOOK_URL = 'https://e68af3b4.ngrok.io/hook'
+WEBHOOK_URL = 'https://9369f97d.ngrok.io/hook'
 
 logging.basicConfig(
 	format='%(asctime)s [%(levelname)s]: %(message)s', 

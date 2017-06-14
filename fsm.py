@@ -1,4 +1,5 @@
 import io, logging
+from random import randint
 
 from transitions import Machine
 from fuzzywuzzy import process
@@ -16,9 +17,10 @@ class TocMachine(object):
 
 	def cmd_home(self, update):
 		return update.message.text[0:5] == '/home'
-
+	"""
 	def cmd_head(self, update):
 		return update.message.text[0:5] == '/head'
+	"""
 
 	def cmd_link(self, update):
 		return update.message.text[0:5] == '/link'
@@ -46,9 +48,6 @@ class TocMachine(object):
 
 
 
-	def on_enter_home(self, update):
-		self.lastResult = None
-
 	def on_enter_help(self, update):
 		with io.StringIO() as replyBuffer:
 			replyBuffer.write(
@@ -59,8 +58,6 @@ class TocMachine(object):
 					'*/header*: switch query mode to _header_\n'
 					'*/macro*: switch query mode to _macro_\n'
 					'*/type*: switch query mode to _type_\n'
-					'\nAfter you got some query result, you can use these commands to get more detail:\n'
-					'*/head*: show the header which the item belongs to\n'
 					'*/arg N*: show the description of Nth argument, where N is a non-negitive integer\n'
 					'*/link*: show the link of the web page which conains full description of this item\n'
 				)
@@ -101,7 +98,14 @@ class TocMachine(object):
 		msg = update.message.text
 		logging.info('receive query: {}'.format(msg))
 
-		update.message.reply_text('A query? let me see...')
+		rd = randint(1, 3)
+		if rd == 1:
+			update.message.reply_text('A query? let me see...')
+		elif rd == 2:
+			update.message.reply_text('OK, just gimme a few seconds...')
+		elif rd == 3:
+			update.message.reply_text('Alright, let\'s look about that...')
+		
 
 		if self.mode == 'all':
 			result = collect.find_one({'name':msg})
@@ -116,7 +120,7 @@ class TocMachine(object):
 			else:
 				nameList = [item['name'] for item in collect.find({'itemType':self.mode})]
 
-			possiblilties = [p for (p, score) in process.extract(msg, nameList) if score >= 70]
+			possiblilties = [p for (p, score) in process.extract(msg, nameList, limit=7) if score >= 70]
 			with io.StringIO() as replyBuffer:
 				if len(possiblilties) == 0:
 					replyBuffer.write('No matched result')
@@ -128,28 +132,37 @@ class TocMachine(object):
 			self.go_back(update)
 		else:
 			with io.StringIO() as replyBuffer:
-				replyBuffer.write('*' + result['itemType'] + '*\n')
+				replyBuffer.write('<i>%s</i> defined in <i>&lt;%s&gt;</i>\n'%(result['itemType'], result['header']))
 				if result['prototype'] == '':
-					replyBuffer.write('```' + result['name'] + '```\n')
+					replyBuffer.write('<code>' + result['name'] + '</code>\n')
 				else:
-					replyBuffer.write('```' + result['prototype'] + '```\n')
-				update.message.reply_text(replyBuffer.getvalue(), parse_mode='Markdown')
+					replyBuffer.write('<code>' + result['prototype'] + '</code>\n')
 
-			with io.StringIO() as replyBuffer:
-				replyBuffer.write(result['description'] + '\n\n')
-				replyBuffer.write(result['returnVal'] + '\n')
-				update.message.reply_text(replyBuffer.getvalue())
-			self.found()
+				replyBuffer.write('<b>' + result['description'] + '</b>\n')
+				replyBuffer.write('return value: ' + result['returnVal'] + '\n')
+				replyBuffer.write('<a href="%s">(full introduction)</a>\n'%(result['link']))
+				update.message.reply_text(replyBuffer.getvalue(), parse_mode='HTML')
+			self.go_back(update)
 
+	"""
 	def on_enter_head(self, update):
 		update.message.reply_text('`%s` is defined in `%s`'%(self.lastResult['name'], self.lastResult['header']) , parse_mode='Markdown')
 		self.go_back(update)
+	"""
 
 	def on_enter_link(self, update):
-		update.message.reply_text('`%s` is on page\n%s'%(self.lastResult['name'], self.lastResult['link']) , parse_mode='Markdown')
+		if self.lastResult is None:
+			update.message.reply_text('No query history, please do some query first')
+		else:
+			update.message.reply_text('OK, you can fine it <a href="%s">here</a>'%(self.lastResult['link']) , parse_mode='HTML')
 		self.go_back(update)
 
 	def on_enter_arg(self, update):
+		if self.lastResult is None:
+			update.message.reply_text('No query history, please do some query first')
+			self.go_back(update)
+			return
+
 		if len(self.lastResult['params']) == 0:
 			update.message.reply_text("there's no argument for this item")
 			self.go_back(update)
@@ -171,46 +184,29 @@ class TocMachine(object):
 		self.go_back(update)
 
 
-state = ['home', 'all', 'function', 'header', 'macro', 'type', 'help', 'head', 'arg', 'link', 'query', 'result']
+state = ['home', 'all', 'function', 'header', 'macro', 'type', 'help', 'arg', 'link', 'query']
 
 trans = [
 	{
 		'trigger':'query',
-		'source':['home', 'result'],
+		'source':'home',
 		'dest':'query'
 	},
 	{
-		'trigger':'found',
-		'source':'query',
-		'dest':'result'
-	},
-	{
 		'trigger':'cmd',
-		'source':'result',
-		'dest':'head',
-		'conditions':'cmd_head'
-	},
-	{
-		'trigger':'cmd',
-		'source':'result',
+		'source':'home',
 		'dest':'arg',
 		'conditions':'cmd_arg'
 	},
 	{
 		'trigger':'cmd',
-		'source':'result',
+		'source':'home',
 		'dest':'link',
 		'conditions':'cmd_link'
 	},
 	{
 		'trigger':'cmd',
-		'source':'result',
-		'dest':'home',
-		'conditions':'cmd_home'
-	},
-	{
-		'trigger':'cmd',
-		'source':['home', 'result'],
+		'source':'home',
 		'dest':'help',
 		'conditions':'cmd_help'
 	},
@@ -246,12 +242,7 @@ trans = [
 	},
 	{
 		'trigger':'go_back',
-		'source':['head', 'arg', 'link'],
-		'dest':'result'
-	},
-	{
-		'trigger':'go_back',
-		'source':['all', 'header', 'function', 'macro', 'type', 'help', 'query'],
+		'source':'*',
 		'dest':'home'
 	}
 ]
